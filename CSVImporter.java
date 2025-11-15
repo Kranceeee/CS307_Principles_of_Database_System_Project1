@@ -16,6 +16,7 @@ import java.sql.Timestamp;
 import java.sql.Types;
 import java.time.OffsetDateTime;
 import java.time.format.DateTimeParseException;
+import java.util.concurrent.TimeUnit; // [新增] 导入用于时间单位转换
 
 /**
  * 数据库导入器 (已修正错误处理)
@@ -25,6 +26,8 @@ import java.time.format.DateTimeParseException;
  * * 每个文件导入任务现在被单独执行和捕获错误，
  * * 以防止单个文件（如 User_Like_Review.csv）中的数据完整性错误（外键）
  * * 导致整个导入过程失败。
+ * * [!! 新增 !!]
+ * * 添加了总运行时间计时器。
  */
 public class CSVImporter {
 
@@ -81,8 +84,14 @@ public class CSVImporter {
         try {
             System.out.println("\n-----------------------------------------");
             System.out.println("开始导入 " + taskName + "...");
+            long taskStartTime = System.currentTimeMillis(); // [新增] 单个任务计时器
+
             task.run(conn);
-            System.out.println("... " + taskName + " 导入任务结束。");
+
+            long taskEndTime = System.currentTimeMillis();
+            double taskDuration = (taskEndTime - taskStartTime) / 1000.0;
+            System.out.printf("... %s 导入任务结束。耗时: %.2f 秒。\n", taskName, taskDuration);
+
         } catch (Exception e) {
             // 捕获此任务期间发生的任何错误 (IO 或 SQL)
             System.err.println("\n[!! 严重错误 !!] 导入 " + taskName + " 时失败: " + e.getMessage());
@@ -97,6 +106,11 @@ public class CSVImporter {
      * 按正确的顺序执行所有导入，但现在单独处理每个任务。
      */
     public void runImport() {
+
+        // [!! 新增 !!] 记录总开始时间
+        long totalStartTime = System.currentTimeMillis();
+        System.out.println("导入程序已启动...");
+
         // 1. 加载驱动程序
         try {
             Class.forName("org.postgresql.Driver");
@@ -150,6 +164,21 @@ public class CSVImporter {
             System.err.println("数据库连接失败！");
             e.printStackTrace();
         }
+
+        // [!! 新增 !!] 计算并打印总耗时
+        long totalEndTime = System.currentTimeMillis();
+        long totalDurationMs = totalEndTime - totalStartTime;
+
+        // 转换为更易读的格式 (例如: 1 分 15.34 秒)
+        long minutes = TimeUnit.MILLISECONDS.toMinutes(totalDurationMs);
+        long seconds = TimeUnit.MILLISECONDS.toSeconds(totalDurationMs) % 60;
+        long millis = totalDurationMs % 1000;
+
+        System.out.println("\n=========================================");
+        System.out.printf("   [!! INFO !!] 导入程序执行完毕。\n");
+        System.out.printf("   [!! INFO !!] 总耗时: %d 分 %d.%03d 秒 (总共: %d 毫秒)\n",
+                minutes, seconds, millis, totalDurationMs);
+        System.out.println("=========================================");
     }
 
     // -----------------------------------------------------------------
@@ -330,6 +359,7 @@ public class CSVImporter {
 
         long count = 0;
         long skippedBatches = 0;
+        long skippedRecords = 0; // [新增] 记录单个跳过的记录
 
         try (
                 Reader reader = new FileReader(filePath);
@@ -366,26 +396,33 @@ public class CSVImporter {
                 } catch (Exception e) {
                     // 记录解析单行时的错误，但继续处理下一行
                     System.err.println("  > 跳过无效记录 (CSV 行号 " + record.getRecordNumber() + "): " + e.getMessage());
+                    skippedRecords++;
                 }
             }
 
             // 执行剩余的批处理
-            try {
-                pstmt.executeBatch();
-                System.out.println("  > 已插入最后 " + (count % BATCH_SIZE) + " 条记录。");
-            } catch (SQLException batchEx) {
-                // [!! 关键更改 !!] 捕获 *最后* 的批处理执行失败
-                System.err.println("  > [!! 最后的批处理失败 !!] 跳过了最后 " + (count % BATCH_SIZE) + " 条记录。");
-                System.err.println("  > 错误详情: " + batchEx.getMessage());
-                skippedBatches++;
-                if (batchEx.getNextException() != null) {
-                    System.err.println("  > 根本原因: " + batchEx.getNextException().getMessage());
+            long remaining = count % BATCH_SIZE;
+            if (remaining > 0) { // [新增] 检查是否有剩余
+                try {
+                    pstmt.executeBatch();
+                    System.out.println("  > 已插入最后 " + remaining + " 条记录。");
+                } catch (SQLException batchEx) {
+                    // [!! 关键更改 !!] 捕获 *最后* 的批处理执行失败
+                    System.err.println("  > [!! 最后的批处理失败 !!] 跳过了最后 " + remaining + " 条记录。");
+                    System.err.println("  > 错误详情: " + batchEx.getMessage());
+                    skippedBatches++;
+                    if (batchEx.getNextException() != null) {
+                        System.err.println("  > 根本原因: " + batchEx.getNextException().getMessage());
+                    }
                 }
             }
 
             System.out.println("  > 导入完成。总共处理 " + count + " 条记录。");
+            if (skippedRecords > 0) {
+                System.out.println("  > [!! 警告 !!] 总共有 " + skippedRecords + " 条 *单行* 因解析错误被跳过。");
+            }
             if (skippedBatches > 0) {
-                System.out.println("  > [!! 警告 !!] 总共有 " + skippedBatches + " 个批次 (约 " + (skippedBatches * BATCH_SIZE) + " 条记录) 因错误被跳过。");
+                System.out.println("  > [!! 警告 !!] 总共有 " + skippedBatches + " 个 *批次* (约 " + (skippedBatches * BATCH_SIZE) + " 条记录) 因数据库错误被跳过。");
             }
 
 
