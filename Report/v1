@@ -1,0 +1,44 @@
+## 成员与分工
+**12410724 谢宏波：**
+- E-R图绘制
+
+**SID 胡雨承：**
+
+
+## Task 1: E-R Diagram
+本小组使用**drawio**绘制工具，绘制本小组的E-R图，其截图如下：
+![Task 1 的 ER 图](https://github.com/Kranceeee/CS307_Principles_of_Database_System_Project1/blob/main/image/ER.png?raw=true)
+
+## Task 2: Database Design
+
+## Task 3: Database Import
+
+## Task 4: Compare DBMS with File I/O
+
+开始编写您的Markdown文档吧！
+
+```javascript
+console.log("Hello MarkdownPro!");
+```
+
+> 这是一个引用示例
+
+### 列表示例
+
+1. 有序列表项1
+2. 有序列表项2
+3. 有序列表项3
+
+- 无序列表项A
+- 无序列表项B
+- 无序列表项C
+
+### 表格示例
+
+| 功能 | 状态 | 说明 |
+|------|------|------|
+| 实时预览 | ✅ | 已完成 |
+| 语法高亮 | ✅ | 已完成 |
+| 导出功能 | ✅ | 已完成 |
+
+**祝您使用愉快！**
