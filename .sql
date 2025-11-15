@@ -1,197 +1,194 @@
--- 1.1 Category (分类)
-CREATE TABLE Category (
-    CategoryId SERIAL PRIMARY KEY,
-    CategoryName VARCHAR(100) NOT NULL UNIQUE  -- 满足 NOT NULL 要求
+/*
+ * 表：Users
+ * 存储食谱作者和评论者的信息
+ */
+CREATE TABLE Users (
+    UserID INT PRIMARY KEY NOT NULL,
+    UserName VARCHAR(255) NOT NULL,
+    Gender VARCHAR(50) NULL,
+    Age INT NULL,
+    Followers INT NOT NULL DEFAULT 0,
+    Following INT NOT NULL DEFAULT 0
 );
 
--- 1.2 Keyword (关键词)
-CREATE TABLE Keyword (
-    KeywordId SERIAL PRIMARY KEY,
-    KeywordName VARCHAR(100) NOT NULL UNIQUE  -- 满足 NOT NULL 要求
+/*
+ * 表：Categories
+ * 存储所有唯一的食谱分类
+ */
+CREATE TABLE Categories (
+    CategoryID INT PRIMARY KEY NOT NULL,
+    CategoryName VARCHAR(255) NOT NULL
 );
 
--- 1.3 Ingredient (食材/配料)
-CREATE TABLE Ingredient (
-    IngredientId SERIAL PRIMARY KEY,
-    IngredientName VARCHAR(255) NOT NULL UNIQUE -- 满足 NOT NULL 要求
+/*
+ * 表：Keywords
+ * 存储所有唯一的食谱关键词
+ */
+CREATE TABLE Keywords (
+    KeywordID INT PRIMARY KEY NOT NULL,
+    KeywordName VARCHAR(255) NOT NULL
 );
 
--- =========================================================
--- 2. 创建核心实体表 (User)
--- =========================================================
-
--- 2.1 User (用户)
-CREATE TABLE "User" (
-    AuthId SERIAL PRIMARY KEY,
-    AuthName VARCHAR(100) NOT NULL, -- 满足 NOT NULL 要求
-    -- 扩展性考虑：将性别和年龄存储为简单属性，符合 3NF。
-    Gender VARCHAR(10),
-    Age SMALLINT CHECK (Age >= 0 AND Age <= 150), -- 限制年龄范围，使用 SMALLINT 节省空间
-    Followers INT DEFAULT 0 NOT NULL,
-    Following INT DEFAULT 0 NOT NULL
+/*
+ * 表：Ingredients
+ * 存储所有唯一的配料
+ */
+CREATE TABLE Ingredients (
+    IngredientID INT PRIMARY KEY NOT NULL,
+    IngredientName VARCHAR(255) NOT NULL
 );
 
--- =========================================================
--- 3. 创建 Recipe (食谱) 表
--- Recipe 依赖于 User (AuthorId)
--- =========================================================
+/*
+ * 表：Recipes
+ * 存储核心的食谱信息
+ */
+CREATE TABLE Recipes (
+    RecipeID INT PRIMARY KEY NOT NULL,
+    AuthorUserID INT NOT NULL,
+    Name VARCHAR(255) NOT NULL,
+    CookingTime INT NULL,
+    PreparationTime INT NULL,
+    TotalTime INT NULL,
+    DatePublished TIMESTAMPTZ NULL,  -- [修正] DATETIME -> TIMESTAMPTZ
+    Description TEXT NULL,
+    AggregateRating DECIMAL(3, 1) NULL,
+    ReviewCount INT NULL,
+    RecipeServings INT NULL,
+    RecipeYield VARCHAR(100) NULL,
+    RecipeInstructions TEXT NULL,
 
--- 3.1 Recipe (食谱)
-CREATE TABLE Recipe (
-    RecipeId BIGSERIAL PRIMARY KEY,
-    AuthorId INT NOT NULL,  -- FK to User (用户 AuthId)
-    Name VARCHAR(255) NOT NULL, -- 满足 NOT NULL 要求
-
-    CookTime SMALLINT CHECK (CookTime >= 0),
-    PrepTime SMALLINT CHECK (PrepTime >= 0),
-    TotalTime SMALLINT CHECK (TotalTime >= 0),
-    DatePublished TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL,
-    Description TEXT,
-    AggregateRating NUMERIC(2, 1) CHECK (AggregateRating >= 0 AND AggregateRating <= 5),
-    ReviewCount INT DEFAULT 0 NOT NULL,
-    RecipeServings NUMERIC(5, 2),
-    RecipeYield VARCHAR(100),
-    RecipeInstructions TEXT NOT NULL, -- 步骤是食谱的核心，设为 NOT NULL
-
-    FOREIGN KEY (AuthorId) REFERENCES "User"(AuthId)
-        ON UPDATE CASCADE ON DELETE RESTRICT  -- 限制删除用户，除非先删除其所有食谱
+    FOREIGN KEY (AuthorUserID) REFERENCES Users(UserID)
 );
 
--- =========================================================
--- 4. 创建 Recipe 的附属信息表 (Nutrition) 和评论表 (Review)
--- =========================================================
-
--- 4.1 Nutrition (营养信息)
--- 1:1 关系 (HasNutrition) - 将 RecipeId 作为主键和外键，保证 3NF 和 1:1 约束。
+/*
+ * 表：Nutrition
+ * 存储食谱的营养信息 (一对一关系)
+ */
 CREATE TABLE Nutrition (
-    RecipeId BIGINT PRIMARY KEY, -- PK, FK to Recipe
-    Calories INT CHECK (Calories >= 0) NOT NULL, -- 满足 NOT NULL 要求
-    -- 所有营养成分使用 NUMERIC(6, 2) 保证精度和范围
-    FatContent NUMERIC(6, 2) CHECK (FatContent >= 0),
-    SaturatedFatContent NUMERIC(6, 2) CHECK (SaturatedFatContent >= 0),
-    CholesterolContent NUMERIC(6, 2) CHECK (CholesterolContent >= 0),
-    SodiumContent NUMERIC(6, 2) CHECK (SodiumContent >= 0),
-    CarbohydrateContent NUMERIC(6, 2) CHECK (CarbohydrateContent >= 0),
-    FiberContent NUMERIC(6, 2) CHECK (FiberContent >= 0),
-    SugarContent NUMERIC(6, 2) CHECK (SugarContent >= 0),
-    ProteinContent NUMERIC(6, 2) CHECK (ProteinContent >= 0),
+    RecipeID INT PRIMARY KEY NOT NULL,
+    Calories DECIMAL(10, 2) NULL,
+    FatContent DECIMAL(10, 2) NULL,
+    ProteinContent DECIMAL(10, 2) NULL,
 
-    FOREIGN KEY (RecipeId) REFERENCES Recipe(RecipeId)
-        ON UPDATE CASCADE ON DELETE CASCADE
+    FOREIGN KEY (RecipeID) REFERENCES Recipes(RecipeID)
 );
 
--- 4.2 Review (评论/评分)
--- 1:N 关系 (Submits)
-CREATE TABLE Review (
-    ReviewId BIGSERIAL PRIMARY KEY,
-    RecipeId BIGINT NOT NULL,  -- FK1 to Recipe
-    AuthId INT NOT NULL,       -- FK2 to User
-    Rating SMALLINT NOT NULL CHECK (Rating >= 1 AND Rating <= 5), -- 满足 NOT NULL 要求
-    Review TEXT,
-    DateSubmitted TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL,
-    DateModified TIMESTAMP WITH TIME ZONE,
-    Likes INT DEFAULT 0 NOT NULL,
+/*
+ * 表：RecipeCategories
+ * 关联表 (多对多): Recipes <-> Categories
+ */
+CREATE TABLE RecipeCategories (
+    RecipeID INT NOT NULL,
+    CategoryID INT NOT NULL,
 
-    -- 确保一个用户只能对一个食谱提交一次评论 (业务逻辑约束)
-    UNIQUE (RecipeId, AuthId),
+    PRIMARY KEY (RecipeID, CategoryID),
+    FOREIGN KEY (RecipeID) REFERENCES Recipes(RecipeID),
+    FOREIGN KEY (CategoryID) REFERENCES Categories(CategoryID)
+);
 
-    FOREIGN KEY (RecipeId) REFERENCES Recipe(RecipeId)
-        ON UPDATE CASCADE ON DELETE CASCADE,
-    FOREIGN KEY (AuthId) REFERENCES "User"(AuthId)
-        ON UPDATE CASCADE ON DELETE RESTRICT
+/*
+ * 表：RecipeKeywords
+ * 关联表 (多对多): Recipes <-> Keywords
+ */
+CREATE TABLE RecipeKeywords (
+    RecipeID INT NOT NULL,
+    KeywordID INT NOT NULL,
+
+    PRIMARY KEY (RecipeID, KeywordID),
+    FOREIGN KEY (RecipeID) REFERENCES Recipes(RecipeID),
+    FOREIGN KEY (KeywordID) REFERENCES Keywords(KeywordID)
+);
+
+/*
+ * 表：RecipeIngredients
+ * 关联表 (多对多): Recipes <-> Ingredients (包含用量)
+ */
+CREATE TABLE RecipeIngredients (
+    RecipeID INT NOT NULL,
+    IngredientID INT NOT NULL,
+    Quantity DECIMAL(10, 2) NULL,
+    Unit VARCHAR(50) NULL,
+    Notes VARCHAR(255) NULL,
+
+    PRIMARY KEY (RecipeID, IngredientID),
+    FOREIGN KEY (RecipeID) REFERENCES Recipes(RecipeID),
+    FOREIGN KEY (IngredientID) REFERENCES Ingredients(IngredientID)
+);
+
+/*
+ * 表：Reviews
+ * 存储用户对食谱的评论和评分
+ */
+CREATE TABLE Reviews (
+    ReviewID INT PRIMARY KEY NOT NULL,
+    RecipeID INT NOT NULL,
+    UserID INT NOT NULL,
+    Rating INT NOT NULL,
+    ReviewText TEXT NULL,
+    DateSubmitted TIMESTAMPTZ NOT NULL,  -- [修正] DATETIME -> TIMESTAMPTZ
+    DateModified TIMESTAMPTZ NOT NULL,   -- [修正] DATETIME -> TIMESTAMPTZ
+    Likes INT NOT NULL DEFAULT 0,
+
+    FOREIGN KEY (RecipeID) REFERENCES Recipes(RecipeID),
+    FOREIGN KEY (UserID) REFERENCES Users(UserID),
+
+    CHECK (Rating >= 0 AND Rating <= 5)
+);
+
+/* * 11. 表：UserFavorites (来自 User_Favorite_Recipe.csv)
+ * 关联表 (多对多): Users <-> Recipes
+ */
+CREATE TABLE UserFavorites (
+    UserID INT NOT NULL,
+    RecipeID INT NOT NULL,
+    DateFavorited TIMESTAMPTZ NULL, -- CSV数据显示此列可为空
+
+    PRIMARY KEY (UserID, RecipeID),
+    FOREIGN KEY (UserID) REFERENCES Users(UserID),
+    FOREIGN KEY (RecipeID) REFERENCES Recipes(RecipeID)
 );
 
 
--- =========================================================
--- 5. 创建所有 M:N 关系的关联表 (Junction Tables)
--- 这些表用于连接核心实体，保证 3NF。
--- =========================================================
 
--- 5.1 User_Follow (用户 M:N 用户)
--- 描述用户间的 'Follow' 关系
-CREATE TABLE User_Follow (
-    FollowerId INT NOT NULL,  -- 追随者 (FK to User)
-    FollowingId INT NOT NULL, -- 被追随者 (FK to User)
+/* * 12. 表：UserFollows (来自 User_Follow.csv)
+ * 关联表 (自引用): Users <-> Users
+ */
+CREATE TABLE UserFollows (
+    FollowerUserID INT NOT NULL,    -- 关注者
+    FollowingUserID INT NOT NULL,   -- 被关注者
 
-    PRIMARY KEY (FollowerId, FollowingId),
-    CHECK (FollowerId <> FollowingId), -- 自我关注约束
+    PRIMARY KEY (FollowerUserID, FollowingUserID),
+    FOREIGN KEY (FollowerUserID) REFERENCES Users(UserID),
+    FOREIGN KEY (FollowingUserID) REFERENCES Users(UserID),
 
-    FOREIGN KEY (FollowerId) REFERENCES "User"(AuthId)
-        ON UPDATE CASCADE ON DELETE CASCADE,
-    FOREIGN KEY (FollowingId) REFERENCES "User"(AuthId)
-        ON UPDATE CASCADE ON DELETE CASCADE
+    -- 约束：防止用户自己关注自己
+    CHECK (FollowerUserID != FollowingUserID)
 );
 
--- 5.2 Recipe_Category (食谱 M:N 分类)
-CREATE TABLE Recipe_Category (
-    RecipeId BIGINT NOT NULL, -- FK to Recipe
-    CategoryId INT NOT NULL,  -- FK to Category
+/* * 13. 表：ReviewLikes (来自 User_Like_Review.csv)
+ * 关联表 (多对多): Users <-> Reviews
+ */
+CREATE TABLE ReviewLikes (
+    UserID INT NOT NULL,
+    ReviewID INT NOT NULL,
+    DateLiked TIMESTAMPTZ NULL, -- CSV数据显示此列可为空
 
-    PRIMARY KEY (RecipeId, CategoryId),
-
-    FOREIGN KEY (RecipeId) REFERENCES Recipe(RecipeId)
-        ON UPDATE CASCADE ON DELETE CASCADE,
-    FOREIGN KEY (CategoryId) REFERENCES Category(CategoryId)
-        ON UPDATE CASCADE ON DELETE RESTRICT
+    PRIMARY KEY (UserID, ReviewID),
+    FOREIGN KEY (UserID) REFERENCES Users(UserID),
+    FOREIGN KEY (ReviewID) REFERENCES Reviews(ReviewID)
 );
 
--- 5.3 Recipe_Keyword (食谱 M:N 关键词)
-CREATE TABLE Recipe_Keyword (
-    RecipeId BIGINT NOT NULL, -- FK to Recipe
-    KeywordId INT NOT NULL,   -- FK to Keyword
+CREATE TABLE RecipeIngredients (
+    RecipeIngredientID SERIAL PRIMARY KEY, -- [新增] 自增主键
+    RecipeID INT NOT NULL,
+    IngredientID INT NOT NULL,
+    Quantity DECIMAL(10, 2) NULL,
+    Unit VARCHAR(50) NULL,
+    Notes VARCHAR(255) NULL,
 
-    PRIMARY KEY (RecipeId, KeywordId),
+    -- 仍然保留外键
+    FOREIGN KEY (RecipeID) REFERENCES Recipes(RecipeID),
+    FOREIGN KEY (IngredientID) REFERENCES Ingredients(IngredientID)
 
-    FOREIGN KEY (RecipeId) REFERENCES Recipe(RecipeId)
-        ON UPDATE CASCADE ON DELETE CASCADE,
-    FOREIGN KEY (KeywordId) REFERENCES Keyword(KeywordId)
-        ON UPDATE CASCADE ON DELETE RESTRICT
-);
-
--- 5.4 Recipe_Ingredient (食谱 M:N 食材/配料)
--- 关系带属性 (Quantity, Unit, Notes)，全部存储在关联表，满足 3NF。
-CREATE TABLE Recipe_Ingredient (
-    RecipeId BIGINT NOT NULL,     -- FK to Recipe
-    IngredientId INT NOT NULL,    -- FK to Ingredient
-
-    Quantity NUMERIC(10, 2) NOT NULL, -- 满足 NOT NULL 要求
-    Unit VARCHAR(50),
-    Notes VARCHAR(255),
-
-    PRIMARY KEY (RecipeId, IngredientId),
-
-    FOREIGN KEY (RecipeId) REFERENCES Recipe(RecipeId)
-        ON UPDATE CASCADE ON DELETE CASCADE,
-    FOREIGN KEY (IngredientId) REFERENCES Ingredient(IngredientId)
-        ON UPDATE CASCADE ON DELETE RESTRICT
-);
-
--- 5.5 User_Favorite_Recipe (用户 M:N 食谱 - 收藏)
-CREATE TABLE User_Favorite_Recipe (
-    AuthId INT NOT NULL,       -- FK to User
-    RecipeId BIGINT NOT NULL,  -- FK to Recipe
-
-    DateFavorited TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL, -- 满足 NOT NULL 要求
-
-    PRIMARY KEY (AuthId, RecipeId),
-
-    FOREIGN KEY (AuthId) REFERENCES "User"(AuthId)
-        ON UPDATE CASCADE ON DELETE CASCADE,
-    FOREIGN KEY (RecipeId) REFERENCES Recipe(RecipeId)
-        ON UPDATE CASCADE ON DELETE CASCADE
-);
-
--- 5.6 User_Like_Review (用户 M:N 评论 - 点赞)
-CREATE TABLE User_Like_Review (
-    AuthId INT NOT NULL,     -- FK to User
-    ReviewId BIGINT NOT NULL, -- FK to Review
-
-    DateLiked TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL, -- 满足 NOT NULL 要求
-
-    PRIMARY KEY (AuthId, ReviewId),
-
-    FOREIGN KEY (AuthId) REFERENCES "User"(AuthId)
-        ON UPDATE CASCADE ON DELETE CASCADE,
-    FOREIGN KEY (ReviewId) REFERENCES Review(ReviewId)
-        ON UPDATE CASCADE ON DELETE CASCADE
+    -- [已移除] PRIMARY KEY (RecipeID, IngredientID)
 );
