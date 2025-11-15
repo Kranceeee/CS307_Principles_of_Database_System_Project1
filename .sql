@@ -60,16 +60,24 @@ CREATE TABLE Recipes (
     FOREIGN KEY (AuthorUserID) REFERENCES Users(UserID)
 );
 
+
 /*
- * 表：Nutrition
- * 存储食谱的营养信息 (一对一关系)
+ * 步骤 2：创建新的、扩展后的 Nutrition 表
+ * (基于 image_49596f.png)
  */
 CREATE TABLE Nutrition (
     RecipeID INT PRIMARY KEY NOT NULL,
     Calories DECIMAL(10, 2) NULL,
     FatContent DECIMAL(10, 2) NULL,
+    SaturatedFatContent DECIMAL(10, 2) NULL,
+    CholesterolContent DECIMAL(10, 2) NULL,
+    SodiumContent DECIMAL(10, 2) NULL,
+    CarbohydrateContent DECIMAL(10, 2) NULL,
+    FiberContent DECIMAL(10, 2) NULL,
+    SugarContent DECIMAL(10, 2) NULL,
     ProteinContent DECIMAL(10, 2) NULL,
 
+    -- 确保它仍然关联到 Recipes 表
     FOREIGN KEY (RecipeID) REFERENCES Recipes(RecipeID)
 );
 
@@ -103,17 +111,7 @@ CREATE TABLE RecipeKeywords (
  * 表：RecipeIngredients
  * 关联表 (多对多): Recipes <-> Ingredients (包含用量)
  */
-CREATE TABLE RecipeIngredients (
-    RecipeID INT NOT NULL,
-    IngredientID INT NOT NULL,
-    Quantity DECIMAL(10, 2) NULL,
-    Unit VARCHAR(50) NULL,
-    Notes VARCHAR(255) NULL,
 
-    PRIMARY KEY (RecipeID, IngredientID),
-    FOREIGN KEY (RecipeID) REFERENCES Recipes(RecipeID),
-    FOREIGN KEY (IngredientID) REFERENCES Ingredients(IngredientID)
-);
 
 /*
  * 表：Reviews
@@ -141,7 +139,7 @@ CREATE TABLE Reviews (
 CREATE TABLE UserFavorites (
     UserID INT NOT NULL,
     RecipeID INT NOT NULL,
-    DateFavorited TIMESTAMPTZ NULL, -- CSV数据显示此列可为空
+  --  DateFavorited TIMESTAMPTZ NULL, -- CSV数据显示此列可为空
 
     PRIMARY KEY (UserID, RecipeID),
     FOREIGN KEY (UserID) REFERENCES Users(UserID),
@@ -171,7 +169,7 @@ CREATE TABLE UserFollows (
 CREATE TABLE ReviewLikes (
     UserID INT NOT NULL,
     ReviewID INT NOT NULL,
-    DateLiked TIMESTAMPTZ NULL, -- CSV数据显示此列可为空
+   -- DateLiked TIMESTAMPTZ NULL, -- CSV数据显示此列可为空
 
     PRIMARY KEY (UserID, ReviewID),
     FOREIGN KEY (UserID) REFERENCES Users(UserID),
@@ -183,8 +181,8 @@ CREATE TABLE RecipeIngredients (
     RecipeID INT NOT NULL,
     IngredientID INT NOT NULL,
     Quantity DECIMAL(10, 2) NULL,
-    Unit VARCHAR(50) NULL,
-    Notes VARCHAR(255) NULL,
+   -- Unit VARCHAR(50) NULL,
+  --  Notes VARCHAR(255) NULL,
 
     -- 仍然保留外键
     FOREIGN KEY (RecipeID) REFERENCES Recipes(RecipeID),
