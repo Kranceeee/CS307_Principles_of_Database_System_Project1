@@ -16,18 +16,18 @@ import java.sql.Timestamp;
 import java.sql.Types;
 import java.time.OffsetDateTime;
 import java.time.format.DateTimeParseException;
-import java.util.concurrent.TimeUnit; // [新增] 导入用于时间单位转换
+import java.util.concurrent.TimeUnit;
 
 /**
- * 数据库导入器 (已修正错误处理)
+ * 数据库导入器 (最终执行版)
  * * 功能：从 13 个 CSV 文件中读取数据，并将其导入到 PostgreSQL 数据库中。
  * * [!! 修正 !!]
  * * 移除了单一的全局事务。
- * * 每个文件导入任务现在被单独执行和捕获错误，
- * * 以防止单个文件（如 User_Like_Review.csv）中的数据完整性错误（外键）
- * * 导致整个导入过程失败。
+ * * 每个文件导入任务现在被单独执行和捕获错误。
  * * [!! 新增 !!]
  * * 添加了总运行时间计时器。
+ * * [!! 新增 !!]
+ * * 在 parse... 辅助方法中添加了调试日志，以捕获导致 NULL 的无效数据。
  */
 public class CSVImporter {
 
@@ -262,14 +262,22 @@ public class CSVImporter {
         });
     }
 
-    // 7. Nutrition
+    // 7. Nutrition (已更新为10个字段)
     private void importNutrition(Connection conn) throws IOException, SQLException {
-        String sql = "INSERT INTO Nutrition (RecipeID, Calories, FatContent, ProteinContent) VALUES (?, ?, ?, ?)";
+        String sql = "INSERT INTO Nutrition (RecipeID, Calories, FatContent, SaturatedFatContent, CholesterolContent, SodiumContent, CarbohydrateContent, FiberContent, SugarContent, ProteinContent) " +
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
         importFromCSV(conn, NUTRITION_FILE, sql, (pstmt, record) -> {
             pstmt.setInt(1, parseInteger(record.get("RecipeIdentifier")));
+            // 假设 CSV 中的列名与数据库字段名匹配
             setNullOrDecimal(pstmt, 2, parseDecimal(record.get("Calories")));
             setNullOrDecimal(pstmt, 3, parseDecimal(record.get("FatContent")));
-            setNullOrDecimal(pstmt, 4, parseDecimal(record.get("ProteinContent")));
+            setNullOrDecimal(pstmt, 4, parseDecimal(record.get("SaturatedFatContent")));
+            setNullOrDecimal(pstmt, 5, parseDecimal(record.get("CholesterolContent")));
+            setNullOrDecimal(pstmt, 6, parseDecimal(record.get("SodiumContent")));
+            setNullOrDecimal(pstmt, 7, parseDecimal(record.get("CarbohydrateContent")));
+            setNullOrDecimal(pstmt, 8, parseDecimal(record.get("FiberContent")));
+            setNullOrDecimal(pstmt, 9, parseDecimal(record.get("SugarContent")));
+            setNullOrDecimal(pstmt, 10, parseDecimal(record.get("ProteinContent")));
         });
     }
 
@@ -295,23 +303,20 @@ public class CSVImporter {
     // 这个方法假定您已经应用了 DDL 修复
     // (即 RecipeIngredients 表使用 SERIAL PRIMARY KEY 而不是复合键)
     private void importRecipeIngredients(Connection conn) throws IOException, SQLException {
-        String sql = "INSERT INTO RecipeIngredients (RecipeID, IngredientID, Quantity, Unit, Notes) VALUES (?, ?, ?, ?, ?)";
+        String sql = "INSERT INTO RecipeIngredients (RecipeID, IngredientID, Quantity) VALUES (?, ?, ?)";
         importFromCSV(conn, RECIPE_INGREDIENTS_FILE, sql, (pstmt, record) -> {
             pstmt.setInt(1, parseInteger(record.get("RecipeIdentifier")));
             pstmt.setInt(2, parseInteger(record.get("IngredientIdentifier")));
             setNullOrDecimal(pstmt, 3, parseDecimal(record.get("Quantity")));
-            setNullOrString(pstmt, 4, record.get("Unit"));
-            setNullOrString(pstmt, 5, record.get("Notes"));
         });
     }
 
     // 11. UserFavorites
     private void importUserFavorites(Connection conn) throws IOException, SQLException {
-        String sql = "INSERT INTO UserFavorites (UserID, RecipeID, DateFavorited) VALUES (?, ?, ?)";
+        String sql = "INSERT INTO UserFavorites (UserID, RecipeID) VALUES (?, ?)";
         importFromCSV(conn, USER_FAVORITES_FILE, sql, (pstmt, record) -> {
             pstmt.setInt(1, parseInteger(record.get("UserIdentifier")));
             pstmt.setInt(2, parseInteger(record.get("RecipeIdentifier")));
-            setNullOrTimestamp(pstmt, 3, parseTimestamp(record.get("DateFavorited")));
         });
     }
 
@@ -326,11 +331,10 @@ public class CSVImporter {
 
     // 13. ReviewLikes
     private void importReviewLikes(Connection conn) throws IOException, SQLException {
-        String sql = "INSERT INTO ReviewLikes (UserID, ReviewID, DateLiked) VALUES (?, ?, ?)";
+        String sql = "INSERT INTO ReviewLikes (UserID, ReviewID) VALUES (?, ?)";
         importFromCSV(conn, REVIEW_LIKES_FILE, sql, (pstmt, record) -> {
             pstmt.setInt(1, parseInteger(record.get("UserIdentifier")));
             pstmt.setInt(2, parseInteger(record.get("ReviewIdentifier")));
-            setNullOrTimestamp(pstmt, 3, parseTimestamp(record.get("DateLiked")));
         });
     }
 
@@ -377,6 +381,7 @@ public class CSVImporter {
                     // 达到批处理大小，执行
                     if (count % BATCH_SIZE == 0) {
                         try {
+                            // [!! 更改 !!] 移除了 DRY_RUN 检查，始终执行
                             pstmt.executeBatch();
                             System.out.println("  > 已插入 " + count + " 条记录...");
                         } catch (SQLException batchEx) {
@@ -404,6 +409,7 @@ public class CSVImporter {
             long remaining = count % BATCH_SIZE;
             if (remaining > 0) { // [新增] 检查是否有剩余
                 try {
+                    // [!! 更改 !!] 移除了 DRY_RUN 检查，始终执行
                     pstmt.executeBatch();
                     System.out.println("  > 已插入最后 " + remaining + " 条记录。");
                 } catch (SQLException batchEx) {
@@ -448,7 +454,8 @@ public class CSVImporter {
             // 处理 "1.0", "4.0" 这样的浮点数格式的整数
             return (int) Double.parseDouble(value);
         } catch (NumberFormatException e) {
-            // System.err.println("无效的整数格式: " + value); // 暂时关闭日志，避免刷屏
+            // [!! 更改 !!] 重新启用错误日志以进行调试
+            System.err.println("无效的整数格式: \"" + value + "\"");
             return null;
         }
     }
@@ -460,7 +467,8 @@ public class CSVImporter {
         try {
             return new BigDecimal(value);
         } catch (NumberFormatException e) {
-            // System.err.println("无效的 Decimal 格式: " + value); // 暂时关闭日志，避免刷屏
+            // [!! 更改 !!] 重新启用错误日志以进行调试
+            System.err.println("无效的 Decimal 格式: \"" + value + "\"");
             return null;
         }
     }
@@ -474,7 +482,8 @@ public class CSVImporter {
             OffsetDateTime odt = OffsetDateTime.parse(value);
             return Timestamp.from(odt.toInstant());
         } catch (DateTimeParseException e) {
-            // System.err.println("无效的时间戳格式: " + value); // 暂时关闭日志，避免刷屏
+            // [!! 更改 !!] 重新启用错误日志以进行调试
+            System.err.println("无效的时间戳格式: \"" + value + "\"");
             return null;
         }
     }
