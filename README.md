@@ -350,33 +350,48 @@ DBMS 服务器: PostgreSQL 17.6
 
 - **1. PerformanceTester.java**
 
-- **职责：** 这是程序的主入口点和协调器，包含了 `main` 方法，负责控制整个测试流程的执行顺序。
+	- **职责：** 这是程序的主入口点和协调器，包含了 `main` 方法，负责控制整个测试流程的执行顺序。
 
-- **测试流程与计时机制：**
+	- **测试流程与计时机制：**
 
-- **预热 (Warm-up)：** 程序会首先执行几轮预热测试，以确保 JVM 的实时编译器（JIT）和 PostgreSQL 的缓存（Buffers）均已启动，从而避免“冷启动”对测试结果的干扰。
+	**预热：** 程序会首先执行几轮预热测试，以确保 JVM 的实时编译器（JIT）和 PostgreSQL 的缓存（Buffers）均已启动，从而避免“冷启动”对测试结果的干扰。
 
-- **循环测试：** 在预热后，程序会进入一个主循环，迭代执行 N 次（例如 1,000 次）CRUD 操作。
+	**循环测试：** 在预热后，程序会进入一个主循环，迭代执行 N 次（例如 1,000 次）CRUD 操作。
 
-- **计时：** 该模块使用 Java 中最高精度的计时 API **`System.nanoTime()`**，在每次 CRUD 操作前后获取时间戳，精确计算单次操作的**纯运行时间**。
+	**计时：** 该模块使用 Java 中最高精度的计时 API **`System.nanoTime()`**，在每次 CRUD 操作前后获取时间戳，精确计算单次操作的**纯运行时间**。
 
-- **结果收集：** 负责收集每次迭代的耗时数据，并在测试结束后计算平均值，用于 Task 4.4 的图表生成。
+	- **结果收集：** 负责收集每次迭代的耗时数据，并在测试结束后计算平均值，用于 Task 4.4 的图表生成。
 
 
 
 - **2. PostgreSQLOperations.java 与 PostgreSQLConnector.java**
 
-- **职责：** 该模块封装了所有与 PostgreSQL 17.6 服务器交互的逻辑，专门执行 DBMS 端的 CRUD 操作。
+	- **职责：** 该模块封装了所有与 PostgreSQL 17.6 服务器交互的逻辑，专门执行 DBMS 端的 CRUD 操作。
 
-- **连接管理：** 内部依赖 **`PostgreSQLConnector.java`** 模块，该模块利用 **PostgreSQL JDBC Driver 42.7.8** 建立和管理数据库连接。
+	- **连接管理：** 内部依赖 **`PostgreSQLConnector.java`** 模块，该模块利用 **PostgreSQL JDBC Driver 42.7.8** 建立和管理数据库连接。
 
-- **语句执行：** 严格使用 **JDBC Prepared Statements** 来执行所有 SQL 语句（例如 `SELECT * FROM Recipes WHERE Recipe_ID = ?`）。
+	- **语句执行：** 严格使用 **JDBC Prepared Statements** 来执行所有 SQL 语句（例如 `SELECT * FROM Recipes WHERE Recipe_ID = ?`）。
 
 
 
-- **3. 文件 I/O 处理器 (CSVDcomposer.java)**
+- **3. CSVDecomposer.java**
 
-- **职责：** 该模块负责模拟原始文件 I/O 的 CRUD 操作，作为 DBMS 的对照组。 - **数据加载：** 在测试开始前，程序会将 `recipes.csv` 文件的全部内容（超过 50 万条记录）一次性读取到 JVM 内存中。 - **内存结构：** 数据被存储在高效的内存数据结构中（例如 `HashMap<Integer, Recipe>`），其中**主键（Recipe_ID）**作为 **Map** 的键。 - **CRUD 模拟：** - **SELECT (查询)：** 模拟为 `HashMap.get(key)` 操作，其时间复杂度为 O(1)。 - **INSERT/DELETE (增删)：** 模拟为 `HashMap.put(key, value)` 或 `HashMap.remove(key)` 操作。 - **核心设计：** 这种设计旨在模拟应用程序直接操作内存数据时的**最佳性能**。 - **4. 数据模型类 (Recipe.java / Review.java)** - **职责：** 这些是简单的 POJO (Plain Old Java Object) 类别，作为数据的载体，确保数据传输的一致性。 - **功能：** **`Recipe.java`** 类别定义了 `recipes` 表中一条记录的数据结构；**`Review.java`** 类别则用于处理与评论相关的 CRUD 操作。
+	- **职责：** 该模块负责模拟原始文件 I/O 的 CRUD 操作，作为 DBMS 的对照组。
+
+	- **数据加载：** 在测试开始前，程序会将 `recipes.csv` 文件的全部内容（超过 50 万条记录）一次性读取到 JVM 内存中。
+
+	- **内存结构：** 数据被存储在高效的内存数据结构中（例如 `HashMap<Integer, Recipe>`），其中**主键（Recipe_ID）**作为 **Map** 的键。
+	- **CRUD 模拟：**
+	**SELECT (查询)：** 模拟为 `HashMap.get(key)` 操作，其时间复杂度为 O(1)。
+
+	**INSERT/DELETE (增删)：** 模拟为 `HashMap.put(key, value)` 或 `HashMap.remove(key)` 操作。
+
+	- **核心设计：** 这种设计旨在模拟应用程序直接操作内存数据时的**最佳性能**。
+
+- **4. 数据模型类 (Recipe.java / Review.java)**
+
+	- **职责：** 这些是简单的 POJO (Plain Old Java Object) 类别，作为数据的载体，确保数据传输的一致性。
+	- **功能：** **`Recipe.java`** 类别定义了 `recipes` 表中一条记录的数据结构；**`Review.java`** 类别则用于处理与评论相关的 CRUD 操作。
 
 
 
