@@ -124,14 +124,14 @@ public class CSVDecomposer {
                 CSVParser csvParser = CSV_FORMAT.parse(reader);
 
                 CSVPrinter recipePrinter = createPrinter("Recipe.csv", "RecipeIdentifier", "AuthorUserIdentifier", "Name", "CookingTime", "PreparationTime", "TotalTime", "DatePublished", "Description", "AggregateRating", "ReviewCount", "RecipeServings", "RecipeYield", "RecipeInstructions");
-                CSVPrinter nutritionPrinter = createPrinter("Nutrition.csv", "RecipeIdentifier", "Calories", "FatContent", "ProteinContent");
+                CSVPrinter nutritionPrinter = createPrinter("Nutrition.csv", "RecipeIdentifier", "Calories", "FatContent", "SaturatedFatContent", "CholesterolContent", "SodiumContent", "CarbohydrateContent", "FiberContent", "SugarContent", "ProteinContent");
                 CSVPrinter categoryPrinter = createPrinter("Category.csv", "CategoryIdentifier", "CategoryName");
                 CSVPrinter recipeCategoryPrinter = createPrinter("Recipe_Category.csv", "RecipeIdentifier", "CategoryIdentifier");
                 CSVPrinter keywordPrinter = createPrinter("Keyword.csv", "KeywordIdentifier", "KeywordName");
                 CSVPrinter recipeKeywordPrinter = createPrinter("Recipe_Keyword.csv", "RecipeIdentifier", "KeywordIdentifier");
                 CSVPrinter ingredientPrinter = createPrinter("Ingredient.csv", "IngredientIdentifier", "IngredientName");
-                CSVPrinter recipeIngredientPrinter = createPrinter("Recipe_Ingredient.csv", "RecipeIdentifier", "IngredientIdentifier", "Quantity", "Unit", "Notes");
-                CSVPrinter userFavoriteRecipePrinter = createPrinter("User_Favorite_Recipe.csv", "UserIdentifier", "RecipeIdentifier", "DateFavorited");
+                CSVPrinter recipeIngredientPrinter = createPrinter("Recipe_Ingredient.csv", "RecipeIdentifier", "IngredientIdentifier", "Quantity");
+                CSVPrinter userFavoriteRecipePrinter = createPrinter("User_Favorite_Recipe.csv", "UserIdentifier", "RecipeIdentifier");
         ) {
             for (CSVRecord record : csvParser) {
                 String recipeId = record.get("RecipeId");
@@ -153,9 +153,16 @@ public class CSVDecomposer {
 
                 // 2. 写入 Nutrition.csv
                 nutritionPrinter.printRecord(
-                        recipeId, getNumericString(record, "Calories"),
+                        recipeId,
+                        getNumericString(record, "Calories"),
                         getNumericString(record, "FatContent"),
-                        getNumericString(record, "ProteinContent")
+                        getNumericString(record, "SaturatedFatContent"), // [新增]
+                        getNumericString(record, "CholesterolContent"),  // [新增]
+                        getNumericString(record, "SodiumContent"),       // [新增]
+                        getNumericString(record, "CarbohydrateContent"), // [新增]
+                        getNumericString(record, "FiberContent"),       // [新增]
+                        getNumericString(record, "SugarContent"),       // [新增]
+                        getNumericString(record, "ProteinContent")        // (此行保留)
                 );
 
                 // 3. 处理 Category (V4 修复)
@@ -201,7 +208,7 @@ public class CSVDecomposer {
                     for (String userId : individualIds) {
                         userId = userId.trim();
                         if (userId.isEmpty()) continue;
-                        userFavoriteRecipePrinter.printRecord(userId, recipeId, "");
+                        userFavoriteRecipePrinter.printRecord(userId, recipeId);
                     }
                 }
             }
@@ -239,7 +246,7 @@ public class CSVDecomposer {
                 BufferedReader reader = Files.newBufferedReader(inputFile);
                 CSVParser csvParser = CSV_FORMAT.parse(reader);
                 CSVPrinter reviewPrinter = createPrinter("Review.csv", "ReviewIdentifier", "RecipeIdentifier", "UserIdentifier", "Rating", "ReviewText", "DateSubmitted", "DateModified", "Likes");
-                CSVPrinter likeReviewPrinter = createPrinter("User_Like_Review.csv", "UserIdentifier", "ReviewIdentifier", "DateLiked")
+                CSVPrinter likeReviewPrinter = createPrinter("User_Like_Review.csv", "UserIdentifier", "ReviewIdentifier")
         ) {
             for (CSVRecord record : csvParser) {
                 String reviewId = record.get("ReviewId");
