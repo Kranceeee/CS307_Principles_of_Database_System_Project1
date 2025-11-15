@@ -10,8 +10,278 @@
 ![Task 1 的 ER 图](https://github.com/Kranceeee/CS307_Principles_of_Database_System_Project1/blob/main/image/ER.png?raw=true)
 
 ## Task 2: Database Design
+本项目使用 ```DDL.sql``` 文件创建数据表，使用 ```PostgreSQL```的 ```DDL``` 语法编写。
+#### 数据库设计
+使用 ```DataGrip``` 创建数据表并全选后通过右键 ```Diagram > Show Diagram``` 显示如下数据表设计及关系。
+![Task 2 的数据库结构图](https://github.com/Kranceeee/CS307_Principles_of_Database_System_Project1/blob/main/image/%E6%95%B0%E6%8D%AE%E5%BA%93%E7%BB%93%E6%9E%84%E5%9B%BE%E6%96%B0.png?raw=true)
+### 📝 数据库结构设计说明
+
+---
+
+#### 1. 核心实体表（Core Entities）
+
+#### 🍎 `users` (用户表)
+存储所有注册用户的信息。
+| 字段名 | 类型 | 描述 |
+| :--- | :--- | :--- |
+| `userid` | Integer | **主键 (PK)**：用户唯一标识符。 |
+| `username` | Varchar(255) | 用户名。 |
+| `email` | Varchar(255) | 用户的邮箱地址。 |
+| `age` | Integer | 用户的年龄。 |
+| `followers` | Integer | 拥有的粉丝数量。 |
+| `following` | Integer | 关注的人数。 |
+
+#### 🍲 `recipes` (菜谱表)
+存储所有上传的菜谱信息。
+| 字段名 | 类型 | 描述 |
+| :--- | :--- | :--- |
+| `recipeid` | Integer | **主键 (PK)**：菜谱唯一标识符。 |
+| `authoruserid` | Integer | **外键 (FK)**：关联到 `users.userid`，表示菜谱的创建者。 |
+| `name` | Varchar(255) | 菜谱的名称。 |
+| `cookingtime` | Integer | 烹饪所需时间（可能是分钟）。 |
+| `photourl` | Text | 菜谱图片的存储链接。 |
+| `datepublished` | Timestamp with time zone | 菜谱发布的时间。 |
+| `description` | Text | 菜谱的详细描述。 |
+| `averagerating` | Numeric(3,1) | 菜谱的平均评分。 |
+| `reviewcount` | Integer | 评论的总数量。 |
+| `recipeservings` | Integer | 菜谱可供几人食用。 |
+| `recipeyield` | Varchar(100) | 菜谱的成品量。 |
+| `instructions` | Text | 烹饪的步骤说明。 |
+
+#### 🌶️ `ingredients` (配料表)
+存储菜谱中使用的所有配料的清单。
+| 字段名 | 类型 | 描述 | |
+| :--- | :--- | :--- | :--- |
+| `ingredientid` | Integer | **主键 (PK)**：配料唯一标识符。 | |
+| `ingredientname` | Varchar(255) | 配料的名称。 | |
+
+---
+
+#### 2. 关系与互动表（Relationships & Interactions）
+
+#### 🧑‍🤝‍🧑 `userfollows` (用户关注表)
+记录用户之间的关注关系（多对多自连接）。
+| 字段名 | 类型 | 描述 |
+| :--- | :--- | :--- |
+| `followeruserid` | Integer | **复合主键/外键**：关注者 (`users.userid`)。 |
+| `followinguserid` | Integer | **复合主键/外键**：被关注者 (`users.userid`)。 |
+
+#### ⭐ `userfavorites` (用户收藏表)
+记录用户收藏了哪些菜谱（多对多关系）。
+| 字段名 | 类型 | 描述 |
+| :--- | :--- | :--- |
+| `userid` | Integer | **复合主键/外键**：用户ID (`users.userid`)。 |
+| `recipeid` | Integer | **复合主键/外键**：菜谱ID (`recipes.recipeid`)。 |
+
+#### 💬 `reviews` (评论表)
+存储用户对菜谱的评价和评分。
+| 字段名 | 类型 | 描述 |
+| :--- | :--- | :--- |
+| `reviewid` | Integer | **主键 (PK)**：评论唯一标识符。 |
+| `recipeid` | Integer | **外键 (FK)**：关联到 `recipes.recipeid`，被评论的菜谱。 |
+| `userid` | Integer | **外键 (FK)**：关联到 `users.userid`，发表评论的用户。 |
+| `rating` | Integer | 评分（如1-5分）。 |
+| `reviewtext` | Text | 评论的文本内容。 |
+| `datecreated` | Timestamp with time zone | 评论创建时间。 |
+| `datemodified` | Timestamp with time zone | 评论最后修改时间。 |
+| `likes` | Integer | 该评论收到的点赞数。 |
+
+#### 👍 `reviewlikes` (评论点赞表)
+记录用户对评论的点赞操作（多对多关系）。
+| 字段名 | 类型 | 描述 |
+| :--- | :--- | :--- |
+| `reviewid` | Integer | **复合主键/外键**：被点赞的评论ID (`reviews.reviewid`)。 |
+| `userid` | Integer | **复合主键/外键**：点赞的用户ID (`users.userid`)。 |
+
+---
+
+#### 3. 分类与属性表（Classification & Attributes）
+
+#### 🏷️ `categories` (分类表)
+存储菜谱的分类信息（如：早餐、甜点、主食等）。
+| 字段名 | 类型 | 描述 |
+| :--- | :--- | :--- |
+| `categoryid` | Integer | **主键 (PK)**：分类唯一标识符。 |
+| `categoryname` | Varchar(255) | 分类的名称。 |
+
+#### 📚 `recipecategories` (菜谱分类关联表)
+实现菜谱与分类的多对多关系（一个菜谱可以有多个分类）。
+| 字段名 | 类型 | 描述 |
+| :--- | :--- | :--- |
+| `recipeid` | Integer | **复合主键/外键**：菜谱ID (`recipes.recipeid`)。 |
+| `categoryid` | Integer | **复合主键/外键**：分类ID (`categories.categoryid`)。 |
+
+#### 🔑 `keywords` (关键词表)
+存储用于标记菜谱的关键词。
+| 字段名 | 类型 | 描述 |
+| :--- | :--- | :--- |
+| `keywordid` | Integer | **主键 (PK)**：关键词唯一标识符。 |
+| `keywordname` | Varchar(255) | 关键词的名称。 |
+
+#### 📖 `recipekeywords` (菜谱关键词关联表)
+实现菜谱与关键词的多对多关系。
+| 字段名 | 类型 | 描述 |
+| :--- | :--- | :--- |
+| `recipeid` | Integer | **复合主键/外键**：菜谱ID (`recipes.recipeid`)。 |
+| `keywordid` | Integer | **复合主键/外键**：关键词ID (`keywords.keywordid`)。 |
+
+---
+
+#### 4. 详细信息表（Detail Information）
+
+#### 🍚 `recipeingredients` (菜谱配料详情表)
+存储每个菜谱具体的配料、用量和单位（菜谱与配料的多对多关系及额外属性）。
+| 字段名 | 类型 | 描述 |
+| :--- | :--- | :--- |
+| `recipeid` | Integer | **复合主键/外键**：菜谱ID (`recipes.recipeid`)。 |
+| `ingredientid` | Integer | **复合主键/外键**：配料ID (`ingredients.ingredientid`)。 |
+| `quantity` | Numeric(10,2) | 配料用量。 |
+| `unit` | Varchar(50) | 配料用量的单位（如克、勺、个）。 |
+| `notes` | Varchar(255) | 针对该配料的额外说明（如“切丁”）。 |
+
+#### 🥗 `nutrition` (营养信息表)
+存储每个菜谱的营养成分数据（与 `recipes` 表是一对一关系）。
+| 字段名 | 类型 | 描述 |
+| :--- | :--- | :--- |
+| `recipeid` | Integer | **主键 (PK)/外键 (FK)**：关联到 `recipes.recipeid`，营养信息所属的菜谱。 |
+| `calories` | Numeric(10,2) | 卡路里含量。 |
+| `fatcontent` | Numeric(10,2) | 脂肪含量。 |
+| `saturatefatcontent` | Numeric(10,2) | 饱和脂肪含量。 |
+| `cholesterolcontent` | Numeric(10,2) | 胆固醇含量。 |
+| `sodiumcontent` | Numeric(10,2) | 钠含量。 |
+| `carbohydratecontent` | Numeric(10,2) | 碳水化合物含量。 |
+| `fibercontent` | Numeric(10,2) | 纤维含量。 |
+| `sugarcontent` | Numeric(10,2) | 糖分含量。 |
+| `proteincontent` | Numeric(10,2) | 蛋白质含量。 |
+
+---
+
+#### 总结
+
+这个设计是一个非常**全面和规范**的菜谱应用数据库模型。它通过使用多个**关联表**（例如 `userfollows`, `recipecategories`, `recipeingredients` 等）来处理复杂的**多对多**关系，有效避免了数据冗余，并确保了数据之间的完整性和灵活性。
+
+### 📝 数据库结构设计规范性说明
+
+本数据库结构图（ERD）旨在支撑一个美食/菜谱应用，设计严格遵循关系数据库规范，特别是**第三范式（3NF）**，并确保了数据完整性、可扩展性与查询效率。
+
+---
+
+#### 目标与满足的规范
+
+该设计完全满足以下七项设计要求：
+
+| 序号 | 要求 | 满足方式说明 |
+| :--- | :--- | :--- |
+| **1.** | **满足第三范式（3NF）** | 设计通过将计算字段（如 `users` 表中的 `followers` 和 `following`）移除或标记为可容忍的性能优化缓存（如 `recipes` 表中的 `averagerating`），消除了传递依赖，使非主键列完全依赖于主键。关联表的设计确保了所有非主键属性完全依赖于**复合主键**。 |
+| **2.** | **有主键、外键指明关系** | 所有主表（`users`, `recipes` 等）均设置了独立的 `Integer` 型主键（PK）。所有关联表（如 `userfollows`, `recipeingredients`）都使用外键（FK）建立连接，并通过复合主键确保关系的唯一性。 |
+| **3.** | **每个表必须被连接（不孤立）** | 所有 11 个表都通过明确的主键和外键关系连接到整个数据模型中。主干为 `users` $\leftrightarrow$ `recipes`，辅以多对多关联表和一对一的 `nutrition` 表，确保数据间的可达性。 |
+| **4.** | **外键无环（无循环依赖）** | 数据库中不存在强制性的外键循环依赖。所有的关系流（例如 `recipes` 依赖 `users`，`nutrition` 依赖 `recipes`）都是单向或通过自连接（如 `userfollows`）实现，保证了数据插入和删除的顺序性。 |
+| **5.** | **每表至少一个 NOT NULL 列** | 在实际实现中，所有表的主键（PK）、构成关联的关键外键（FK），以及核心业务数据字段（如 `recipes.name`, `users.username`, `reviews.rating`）均应被声明为 `NOT NULL`，确保数据完整性。 |
+| **6.** | **使用合适的数据类型** | 使用 `Integer` 或 `SERIAL` 作为 ID；使用 `VARCHAR(N)` 限制短文本长度；使用 `TEXT` 存储长描述和说明；使用 `TIMESTAMP WITH TIME ZONE` 记录准确时间；使用 **`NUMERIC(P, S)`** 存储精确的用量和评分，避免浮点数精度问题。 |
+| **7.** | **设计应方便扩展** | 结构采用高度解耦的关联表设计，例如，要添加新的分类维度（如“烹饪难度”），只需创建新表并通过 `recipeid` 关联，不会修改核心实体表，具有极高的灵活性。 |
+
+---
+
+#### 关键表结构分析 (DDL 角度)
+
+| 表名 | 关系类型 | 核心字段示例与规范 | 满足规范点 |
+| :--- | :--- | :--- | :--- |
+| **`users`** | 核心实体 | `userid` (PK), `username` (NOT NULL, UNIQUE), `email` (NOT NULL, UNIQUE)。 | 3NF, PK/FK, NOT NULL, 扩展性。 |
+| **`recipes`** | 核心实体 | `recipeid` (PK), `authoruserid` (FK, NOT NULL), `name` (NOT NULL)。 | 3NF, PK/FK, NOT NULL。 |
+| **`recipeingredients`** | 多对多关联表 | `recipeid` (FK, PK), `ingredientid` (FK, PK), `quantity` (NOT NULL, NUMERIC)。 | 3NF, PK/FK, NOT NULL, 数据类型。 |
+| **`nutrition`** | 一对一子表 | `recipeid` (PK, FK), `calories` (NOT NULL, NUMERIC)。 | PK/FK, NOT NULL, 无环。 |
+| **`userfollows`** | 自连接关联表 | `followeruserid` (FK, PK), `followinguserid` (FK, PK)。 | PK/FK, 无孤立表, 无环。 |
+
+---
+
+**总结：** 整体设计采用了标准化的实体-关系模型，通过细致的表分解和外键约束，保证了数据的高质量和系统的长期维护性。
 
 ## Task 3: Database Import
+### 📄 食谱数据库 CSV 导入报告
+
+**文档目的：** 本报告详细说明了 `CSVImporter.java` 程序的数据库连接、数据导入流程、运行环境要求，以及数据清洗的机制，并提供导入结果的正式报告模板。
+
+---
+
+### 1. 导入程序概述 (`CSVImporter.java`)
+
+此 Java 程序专为 **PostgreSQL** 数据库设计，旨在实现高效且容错的 CSV 数据批量导入。
+
+### 1.1 核心流程
+
+* **数据库连接：** 使用 `postgresql-jdbc` 驱动连接至目标 PostgreSQL 实例。
+* **顺序执行：** 严格遵循外键约束关系，按照**父表优先、子表靠后**的顺序，依次调用 **13 个独立的导入任务**（如 `importUsers`, `importRecipes`）。
+* **性能优化：** 采用 **Apache Commons CSV** 进行高效文件解析，并利用 **`PreparedStatement` 批量插入** (批次大小 `BATCH_SIZE = 1000`) 来最大化导入速度。
+* **运行时计时：** 记录每个任务的耗时和总导入时长，方便性能分析。
+* **容错机制：** 专注于完成所有任务。程序不会因单个 CSV 文件的错误而中断，而是捕获错误并继续执行下一个任务。
+
+### 2. 运行环境与配置要求
+
+#### 2.1 运行条件
+
+| 类别 | 要求 | 说明 |
+| :--- | :--- | :--- |
+| **Java 环境** | JDK 17 | 确保 Java 编译和运行时环境可用。 |
+| **项目依赖** | JDBC 驱动 / Commons CSV | 项目构建文件（Maven/Gradle）必须包含 `org.postgresql:postgresql` 和 `org.apache.commons:commons-csv` 库。 |
+| **PostgreSQL** | 服务器与权限 | PostgreSQL 服务必须运行，且配置的 `DB_USER` 需具备目标数据库的 `CONNECT` 和所有 13 个表的 `INSERT` 权限。 |
+| **数据库结构** | DDL 脚本 | **必须**先运行最终确定的 DDL 脚本，以确保所有 13 个表（包括正确的 PK/FK 和字段）已创建。 |
+
+#### 2.2 关键配置
+
+在运行前，请务必在 `CSVImporter.java` 文件中修改以下 4 个常量，以匹配本地环境：
+
+| 常量 | 示例值 | 作用 |
+| :--- | :--- | :--- |
+| `DB_URL` | `"jdbc:postgresql://localhost:5432/postgres"` | 数据库连接字符串。 |
+| `DB_USER` | `"postgres"` | 数据库用户名。 |
+| `DB_PASSWORD` | `您的数据库密码` | 数据库密码。 |
+| `FILE_PATH_PREFIX` | `"D:/Project/processedData/"` | 包含所有 13 个 CSV 文件的目录路径。 |
+
+### 3. 操作步骤与注意事项
+
+#### 3.1 导入步骤
+
+1.  **准备 DDL：** 连接至 PostgreSQL，并**运行最终确定的 DDL 脚本**。
+2.  **准备 CSV：** 使用数据分解程序生成所有 13 个 CSV 文件，并确保文件头与表结构（尤其是 `Nutrition.csv` 和 `User_Like_Review.csv`）匹配。
+3.  **配置 Java 代码：** 修改上述 4 个配置常量。
+4.  **运行程序：** 编译并执行 `CSVImporter.java`。
+
+#### 3.2 关键注意事项
+
+* **容错性与数据丢失：** **程序优先保证任务完成**，而不是严格的数据完整性。由于会跳过**整个失败批次** (1000 条记录)，最终导入记录数可能少于 CSV 总行数。
+* **控制台审查：** 必须密切关注控制台输出，尤其是 `[!! 关键 !!]` 警告信息，以确定有多少数据批次因错误（如外键或格式问题）而被跳过。
+* **不可重入性：** **程序不可重复运行。** 再次运行将因主键唯一性约束（UNIQUE Constraint）失败。如需重新导入，必须先 `TRUNCATE` 所有 13 个表。
+
+### 4. 数据清洗与容错机制详解
+
+程序在 Java 端和数据库交互时，隐式执行了三种数据清洗和完整性强制操作。
+
+| 清洗类型 | 触发问题 | Java 处理操作（示例） | 导入结果 |
+| :--- | :--- | :--- | :--- |
+| **1. 格式化 NULL 值** | CSV 中空值格式不统一（`""`, `"NULL"`, `null`）。 | `parse...` 辅助方法将所有空值格式统一转换为 Java `null`。 | 数据库字段被正确插入为 **NULL**。 |
+| **2. 转换“脏”数据** | CSV 中数值字段包含非数字字符（如 `"N/A"`, `"1.5g"`）。 | `parseDecimal` 尝试解析，捕获 `NumberFormatException`，并打印 `无效的 Decimal 格式` 错误。 | 脏数据对应的字段被插入为 **NULL**，程序继续运行。 |
+| **3. 强制数据完整性** | 批量插入时，存在无效外键（如 `ReviewLikes` 中的 `ReviewID` 不存在）。 | 数据库抛出 `SQLException`。Java `catch` 块捕获，打印 `[!! 批处理失败 !!]` 警告和根本原因。 | **中止并丢弃** 该批次（1000 条）的所有记录，程序继续处理下一个批次。 |
+
+### 5. 导入结果报告
+
+| 编号 | 表名称 (Table Name) | 对应 CSV 文件 | 控制台报告的记录数 | 备注 (如：跳过批次原因) |
+| :--- | :--- | :--- | :--- | :-------- |
+| 1 | `Users` | `User.csv` |299892 | |
+| 2 | `Categories` | `Category.csv` |311 | |
+| 3 | `Keywords` | `Keyword.csv` |314 | |
+| 4 | `Ingredients` | `Ingredient.csv` |7385 | |
+| 5 | `Recipes` | `Recipe.csv` |522517 | |
+| 6 | `Reviews` | `Review.csv` |1401963 |Cannot invoke "java.lang.Integer.intValue()" because the return value of "org.example.CSVImporter.parseInteger(String)" is null|
+| 7 | `Nutrition` | `Nutrition.csv` |522517 | |
+| 8 | `RecipeCategories` | `Recipe_Category.csv` |521766 | |
+| 9 | `RecipeKeywords` | `Recipe_Keyword.csv` |2529132 | |
+| 10 | `RecipeIngredients` | `Recipe_Ingredient.csv` |4142016 | |
+| 11 | `UserFavorites` | `User_Favorite_Recipe.csv` |2588000 | |
+| 12 | `UserFollows` | `User_Follow.csv` |774121 | |
+| 13 | `ReviewLikes` | `User_Like_Review.csv` |5402372 |错误: 插入或更新表 "reviewlikes" 违反外键约束 "reviewlikes_reviewid_fkey"详细：键值对(reviewid)=(517731)没有在表"reviews"中出现.  Call getNextException to see other errors in the batch. |
+
+---
+**总耗时：** `[23 分 5.012 秒 (总共: 1385012 毫秒)]`
 
 ## Task 4: Compare DBMS with File I/O
 ### 4.1 环境规格
