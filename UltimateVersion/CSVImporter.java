@@ -1,6 +1,5 @@
-package dbms; // 1. 修正：包名改為 dbms
+package dbms; 
 
-// 导入
 import org.postgresql.copy.CopyManager;
 import org.postgresql.core.BaseConnection;
 
@@ -11,19 +10,8 @@ import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.concurrent.TimeUnit;
 
-/**
- * 数据库导入器 (V2 - 高速 COPY 版)
- * [已适配您的项目结构]
- * - 位于 'dbms' 包
- * - 移除了硬编码的密码
- * - 重复使用 'PostgreSQLConnector.java' 来获取数据库连接
- */
-public class CSVImporter { // 2. 修正：类名简化
+public class CSVImporter { 
 
-    // 3. 修正：移除了硬编码的 DB_URL, DB_USER, DB_PASSWORD
-    //    因为我们将使用 PostgreSQLConnector
-
-    // 文件路径配置 (这部分保持不变，请确保路径 D:/... 正确)
     private static final String FILE_PATH_PREFIX ="C:\\数据库原理\\decomposer\\";
     private static final String RECIPES_FILE = FILE_PATH_PREFIX + "Recipe.csv";
     private static final String REVIEWS_FILE = FILE_PATH_PREFIX + "Review.csv";
@@ -41,7 +29,7 @@ public class CSVImporter { // 2. 修正：类名简化
 
 
     public static void main(String[] args) {
-        CSVImporter importer = new CSVImporter(); // 修正：使用新类名
+        CSVImporter importer = new CSVImporter(); 
         importer.runImport();
     }
 
@@ -64,25 +52,19 @@ public class CSVImporter { // 2. 修正：类名简化
 
         } catch (Exception e) {
             System.err.println("\n[!! 严重错误 !!] 导入 " + taskName + " 时失败: " + e.getMessage());
-            System.err.println("  > [!! 提示 !!] COPY 失败通常意味着 CSV 数据类型与数据库表不匹配，");
-            System.err.println("  >        或者 CSV 列的顺序与 COPY 语句中指定的顺序不符。");
             e.printStackTrace();
         }
     }
 
     public void runImport() {
         long totalStartTime = System.currentTimeMillis();
-        System.out.println("导入程序已启动 (V2 - COPY 模式)...");
+        System.out.println("导入程序已启动...");
 
-        // 4. 修正：移除了 Class.forName，因为 Maven 依赖和 Connector 会处理
-
-        // 5. 修正：使用 PostgreSQLConnector.getConnection()
         try (Connection conn = PostgreSQLConnector.getConnection()) {
 
             conn.setAutoCommit(true);
             System.out.println("数据库连接成功。");
 
-            // 按顺序执行导入
             runSingleImport(conn, "Users", this::importUsers);
             runSingleImport(conn, "Categories", this::importCategories);
             runSingleImport(conn, "Keywords", this::importKeywords);
@@ -101,15 +83,13 @@ public class CSVImporter { // 2. 修正：类名简化
             System.out.println("🎉 所有 13 个导入任务已尝试执行。");
 
         } catch (SQLException e) {
-            System.err.println("数据库连接失败！(检查 PostgreSQLConnector 或数据库服务是否运行)");
+            System.err.println("数据库连接失败！");
             e.printStackTrace();
         } catch (RuntimeException e) {
-            // 捕获来自 PostgreSQLConnector 的连接失败
             System.err.println(e.getMessage());
             e.printStackTrace();
         }
 
-        // ... 总时间计算 (保持不变) ...
         long totalEndTime = System.currentTimeMillis();
         long totalDurationMs = totalEndTime - totalStartTime;
         long minutes = TimeUnit.MILLISECONDS.toMinutes(totalDurationMs);
@@ -117,25 +97,24 @@ public class CSVImporter { // 2. 修正：类名简化
         long millis = totalDurationMs % 1000;
 
         System.out.println("\n=========================================");
-        System.out.printf("   [!! INFO !!] 导入程序执行完毕。\n");
-        System.out.printf("   [!! INFO !!] 总耗时: %d 分 %d.%03d 秒 (总共: %d 毫秒)\n",
+        System.out.printf("   [!! INFO !!] 导入程序执行完毕。\n");
+        System.out.printf("   [!! INFO !!] 总耗时: %d 分 %d.%03d 秒 (总共: %d 毫秒)\n",
                 minutes, seconds, millis, totalDurationMs);
         System.out.println("=========================================");
     }
 
     // -----------------------------------------------------------------
-    //  通用 COPY 导入器
+    //  通用 COPY 导入器
     // -----------------------------------------------------------------
 
     private void importWithCopy(Connection conn, String filePath, String copySql)
             throws SQLException, IOException {
 
-        // [!! 保留 !!] 使用 .getCopyAPI()
         CopyManager copyManager = ((BaseConnection) conn).getCopyAPI();
 
         try (Reader reader = new FileReader(filePath)) {
             long rowsAffected = copyManager.copyIn(copySql, reader);
-            System.out.println("  > [COPY] 成功导入 " + rowsAffected + " 条记录。");
+            System.out.println("  > [COPY] 成功导入 " + rowsAffected + " 条记录。");
         }
     }
 
@@ -143,13 +122,15 @@ public class CSVImporter { // 2. 修正：类名简化
 
 
     // -----------------------------------------------------------------
-    //  [!! 警告 !!] 导入方法 (SQL 与数据库大小写)
+    //  [!! 警告 !!] 导入方法 (SQL 与数据库大小写)
     // -----------------------------------------------------------------
 
-    // 警告：您队友的 COPY 语句 (如 COPY Users (UserID...)) 使用的是混合大小写。
-    // 这要求您的数据库表和列名在创建时使用了双引号 (例如 CREATE TABLE "Users" ("UserID" INT...))。
-    // 这与我们为 PerformanceTester 修正的全小写 (users, userid) 方案是冲突的。
-    // 您必须确保您的数据库模式与以下 COPY 语句匹配！
+    /*
+     * 警告：您队友的 COPY 语句 (如 COPY Users (UserID...)) 使用的是混合大小写。
+     * 这要求您的数据库表和列名在创建时使用了双引号 (例如 CREATE TABLE "Users" ("UserID" INT...))。
+     * 这与我们为 PerformanceTester 修正的全小写 (users, userid) 方案是冲突的。
+     * 您必须确保您的数据库模式与以下 COPY 语句匹配！
+     */
 
     // 1. Users
     private void importUsers(Connection conn) throws IOException, SQLException {
