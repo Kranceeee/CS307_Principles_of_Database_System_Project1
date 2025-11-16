@@ -1,0 +1,53 @@
+package dbms;
+
+import java.sql.Array;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.SQLException;
+import java.util.Random;
+
+public class BatchQueryTask implements Runnable {
+
+    private static final int BATCH_SIZE = 100;
+
+    private final int iterations;
+
+    private final int maxId = 500000;
+    private final Random random = new Random();
+
+    public BatchQueryTask(int iterations) {
+        this.iterations = iterations;
+    }
+
+    @Override
+    public void run() {
+        Integer[] idArray = new Integer[BATCH_SIZE];
+
+        for (int i = 0; i < iterations; i++) {
+
+            for (int j = 0; j < BATCH_SIZE; j++) {
+                idArray[j] = random.nextInt(maxId) + 1;
+            }
+
+            try (Connection conn = C3P0Connector.getConnection()) {
+
+                Array pgArray = conn.createArrayOf("int", idArray);
+
+                String sql = "SELECT * FROM recipes WHERE recipeid = ANY(?)";
+
+                try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+                    stmt.setArray(1, pgArray);
+
+                    stmt.execute();
+                }
+
+                pgArray.free();
+
+            } catch (SQLException e) {
+                System.err.println("执行绪 " + Thread.currentThread().getName() + " 发生 SQL 错误: " + e.getMessage());
+            } catch (Exception e) {
+                System.err.println("执行绪 " + Thread.currentThread().getName() + " 发生未知错误: " + e.getMessage());
+            }
+        }
+    }
+}
