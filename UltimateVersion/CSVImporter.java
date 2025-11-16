@@ -40,7 +40,6 @@ public class CSVImporter {
 
     private void runSingleImport(Connection conn, String taskName, ImportTask task) {
         try {
-            System.out.println("\n-----------------------------------------");
             System.out.println("开始导入 " + taskName + "...");
             long taskStartTime = System.currentTimeMillis();
 
@@ -79,8 +78,7 @@ public class CSVImporter {
             runSingleImport(conn, "UserFollows", this::importUserFollows);
             runSingleImport(conn, "ReviewLikes", this::importReviewLikes);
 
-            System.out.println("\n-----------------------------------------");
-            System.out.println("🎉 所有 13 个导入任务已尝试执行。");
+            System.out.println("所有 13 个导入任务已尝试执行。");
 
         } catch (SQLException e) {
             System.err.println("数据库连接失败！");
@@ -103,10 +101,6 @@ public class CSVImporter {
         System.out.println("=========================================");
     }
 
-    // -----------------------------------------------------------------
-    //  通用 COPY 导入器
-    // -----------------------------------------------------------------
-
     private void importWithCopy(Connection conn, String filePath, String copySql)
             throws SQLException, IOException {
 
@@ -120,17 +114,6 @@ public class CSVImporter {
 
     private static final String COPY_OPTIONS = "FROM STDIN WITH (FORMAT csv, HEADER true, NULL '', DELIMITER ',')";
 
-
-    // -----------------------------------------------------------------
-    //  [!! 警告 !!] 导入方法 (SQL 与数据库大小写)
-    // -----------------------------------------------------------------
-
-    /*
-     * 警告：您队友的 COPY 语句 (如 COPY Users (UserID...)) 使用的是混合大小写。
-     * 这要求您的数据库表和列名在创建时使用了双引号 (例如 CREATE TABLE "Users" ("UserID" INT...))。
-     * 这与我们为 PerformanceTester 修正的全小写 (users, userid) 方案是冲突的。
-     * 您必须确保您的数据库模式与以下 COPY 语句匹配！
-     */
 
     // 1. Users
     private void importUsers(Connection conn) throws IOException, SQLException {
@@ -210,3 +193,4 @@ public class CSVImporter {
         importWithCopy(conn, REVIEW_LIKES_FILE, sql);
     }
 }
+
