@@ -1,4 +1,4 @@
-package org.example; // 确保这与您的包名一致
+package org.example; 
 
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;
@@ -19,17 +19,10 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-/**
- * (已更新 - 最终版本 V10)
- * - 包含 V9 的所有修复 (路径, 表头, ID 浮点数)。
- * - (V10 关键修复) 在 processUserFile, processRecipeFile, 和 processReviewFile
- * 中添加了严格的 NULL 检查。
- * - 如果一行数据的主键 (PK) 或 关键外键 (FK) 为 NULL (来自不良的原始数据)，
- * 则该行将被完全跳过，以防止 'violates not-null constraint' 错误。
- */
-public class CSVDecomposerV2 { // [!! 重命名 !!]
 
-    // --- 配置 (V9.1 路径修复 - 保持不变) ---
+public class CSVDecomposerV2 { 
+
+
     private static final String INPUT_DIR = "D:/RecipeImporter/CS307/data";
     private static final String OUTPUT_DIR = "D:/RecipeImporter/CS307/processedData";
 
@@ -37,7 +30,6 @@ public class CSVDecomposerV2 { // [!! 重命名 !!]
     private static final String INPUT_RECIPE_FILE = "recipes.csv";
     private static final String INPUT_REVIEW_FILE = "reviews.csv";
 
-    // ... (所有 Map, Counter, CSVFormat, Pattern 保持不变) ...
     private final Map<String, Integer> ingredientMap = new HashMap<>();
     private final AtomicInteger ingredientIdCounter = new AtomicInteger(1);
     private final Map<String, Integer> categoryMap = new HashMap<>();
@@ -54,7 +46,7 @@ public class CSVDecomposerV2 { // [!! 重命名 !!]
 
 
     public static void main(String[] args) {
-        CSVDecomposerV2 decomposer = new CSVDecomposerV2(); // [!! V10 !!]
+        CSVDecomposerV2 decomposer = new CSVDecomposerV2();
         try {
             decomposer.runDecomposition();
             System.out.println("数据分解成功 (V10 - NOT NULL 约束修复)！");
@@ -81,28 +73,19 @@ public class CSVDecomposerV2 { // [!! 重命名 !!]
         System.out.println("已生成13个CSV文件 (V10)，准备导入。");
     }
 
-    /**
-     * 1. 处理用户文件 (V10 更新)
-     * - (V10) 如果 UserID (PK) 为 null，则跳过该行。
-     */
     private void processUserFile() throws IOException {
         Path inputFile = Paths.get(INPUT_DIR, INPUT_USER_FILE);
 
         try (
                 BufferedReader reader = Files.newBufferedReader(inputFile);
                 CSVParser csvParser = CSV_FORMAT.parse(reader);
-                // V8 表头修复 (保持不变)
                 CSVPrinter userPrinter = createPrinter("User.csv", "UserID", "UserName", "Gender", "Age", "Followers", "Following");
                 CSVPrinter followsPrinter = createPrinter("User_Follow.csv", "FollowerUserID", "FollowingUserID")
         ) {
             for (CSVRecord record : csvParser) {
-                // V9 修复 (保持不变)
                 String userIdentifier = getIntegerString(record, "AuthorId");
-
-                // [!! V10 修复 !!]
-                // 如果用户的主键 (UserID) 为 null，则此行无效。
                 if (userIdentifier == null) {
-                    System.err.println("  > [V10] 跳过无效的 User 记录 (UserID 为 null)，在原始文件第 " + record.getRecordNumber() + " 行附近。");
+                    System.err.println("  >  跳过无效的 User 记录 (UserID 为 null)，在原始文件第 " + record.getRecordNumber() + " 行附近。");
                     continue; // 跳到下一个 CSVRecord
                 }
 
@@ -121,9 +104,8 @@ public class CSVDecomposerV2 { // [!! 重命名 !!]
                     for (String followedId : individualIds) {
                         String trimmedId = followedId.trim();
                         if (!trimmedId.isEmpty()) {
-                            // V9 修复 (保持不变)
                             String cleanedId = cleanIntegerString(trimmedId);
-                            if (cleanedId != null) { // [!! V10 修复 !!] 确保我们不会写入 null 的 FK
+                            if (cleanedId != null) { 
                                 followsPrinter.printRecord(userIdentifier, cleanedId);
                             }
                         }
@@ -135,10 +117,7 @@ public class CSVDecomposerV2 { // [!! 重命名 !!]
         }
     }
 
-    /**
-     * 2. 处理菜谱文件 (V10 更新)
-     * - (V10) 如果 RecipeID (PK) 或 AuthorUserID (FK) 为 null，则跳过该行。
-     */
+    
     private void processRecipeFile() throws IOException {
         Path inputFile = Paths.get(INPUT_DIR, INPUT_RECIPE_FILE);
 
@@ -146,7 +125,6 @@ public class CSVDecomposerV2 { // [!! 重命名 !!]
                 BufferedReader reader = Files.newBufferedReader(inputFile);
                 CSVParser csvParser = CSV_FORMAT.parse(reader);
 
-                // V8 表头修复 (保持不变)
                 CSVPrinter recipePrinter = createPrinter("Recipe.csv", "RecipeID", "AuthorUserID", "Name", "CookingTime", "PreparationTime", "TotalTime", "DatePublished", "Description", "AggregateRating", "ReviewCount", "RecipeServings", "RecipeYield", "RecipeInstructions");
                 CSVPrinter nutritionPrinter = createPrinter("Nutrition.csv", "RecipeID", "Calories", "FatContent", "SaturatedFatContent", "CholesterolContent", "SodiumContent", "CarbohydrateContent", "FiberContent", "SugarContent", "ProteinContent");
                 CSVPrinter categoryPrinter = createPrinter("Category.csv", "CategoryID", "CategoryName");
@@ -158,18 +136,14 @@ public class CSVDecomposerV2 { // [!! 重命名 !!]
                 CSVPrinter userFavoriteRecipePrinter = createPrinter("User_Favorite_Recipe.csv", "UserID", "RecipeID");
         ) {
             for (CSVRecord record : csvParser) {
-                // V9 修复 (保持不变)
                 String recipeId = getIntegerString(record, "RecipeId");
                 String authorId = getIntegerString(record, "AuthorId");
 
-                // [!! V10 修复 !!]
-                // 如果食谱的主键 (RecipeID) 或关键外键 (AuthorUserID) 为 null，则此行无效。
                 if (recipeId == null || authorId == null) {
-                    System.err.println("  > [V10] 跳过无效的 Recipe 记录 (PK/FK 为 null)，在原始文件第 " + record.getRecordNumber() + " 行附近。 RecipeID=" + recipeId + ", AuthorID=" + authorId);
-                    continue; // 跳到下一个 CSVRecord
+                    System.err.println("  >  跳过无效的 Recipe 记录 (PK/FK 为 null)，在原始文件第 " + record.getRecordNumber() + " 行附近。 RecipeID=" + recipeId + ", AuthorID=" + authorId);
+                    continue; 
                 }
 
-                // 1. 写入 Recipe.csv (现在是安全的)
                 recipePrinter.printRecord(
                         recipeId, authorId, record.get("Name"),
                         parseDurationToMinutes(record.get("CookTime")),
@@ -184,7 +158,6 @@ public class CSVDecomposerV2 { // [!! 重命名 !!]
                         cleanRVectorString(record.get("RecipeInstructions"))
                 );
 
-                // 2. 写入 Nutrition.csv (现在是安全的)
                 nutritionPrinter.printRecord(
                         recipeId,
                         getNumericString(record, "Calories"),
@@ -197,8 +170,7 @@ public class CSVDecomposerV2 { // [!! 重命名 !!]
                         getNumericString(record, "SugarContent"),
                         getNumericString(record, "ProteinContent")
                 );
-
-                // 3. 处理 Category (现在是安全的)
+                
                 List<String> categoryNameLists = parseCsvListString(record.get("RecipeCategory"));
                 for (String categoryNameList : categoryNameLists) {
                     String[] individualNames = categoryNameList.split(",");
@@ -210,7 +182,6 @@ public class CSVDecomposerV2 { // [!! 重命名 !!]
                     }
                 }
 
-                // 4. 处理 Keyword (现在是安全的)
                 List<String> keywordNameLists = parseCsvListString(record.get("Keywords"));
                 for (String keywordNameList : keywordNameLists) {
                     String[] individualNames = keywordNameList.split(",");
@@ -221,8 +192,7 @@ public class CSVDecomposerV2 { // [!! 重命名 !!]
                         recipeKeywordPrinter.printRecord(recipeId, keywordId);
                     }
                 }
-
-                // 5. 处理 Ingredient (现在是安全的)
+                
                 List<String> ingredientNameLists = parseCsvListString(record.get("RecipeIngredientParts"));
                 for (String ingredientNameList : ingredientNameLists) {
                     String[] individualNames = ingredientNameList.split(",");
@@ -234,7 +204,6 @@ public class CSVDecomposerV2 { // [!! 重命名 !!]
                     }
                 }
 
-                // 6. 处理 FavoriteUsers (现在是安全的)
                 List<String> favoriteUserLists = parseCsvListString(record.get("FavoriteUsers"));
                 for (String userIdList : favoriteUserLists) {
                     String[] individualIds = userIdList.split(",");
@@ -242,13 +211,13 @@ public class CSVDecomposerV2 { // [!! 重命名 !!]
                         favUserId = favUserId.trim();
                         if (favUserId.isEmpty()) continue;
                         String cleanedId = cleanIntegerString(favUserId);
-                        if (cleanedId != null) { // [!! V10 修复 !!] 确保我们不会写入 null 的 FK
+                        if (cleanedId != null) {
                             userFavoriteRecipePrinter.printRecord(cleanedId, recipeId);
                         }
                     }
                 }
             }
-            // (关闭所有 printer - 保持不变)
+    
             recipePrinter.close(true);
             nutritionPrinter.close(true);
             categoryPrinter.close(true);
@@ -261,7 +230,7 @@ public class CSVDecomposerV2 { // [!! 重命名 !!]
         }
     }
 
-    // (getNewId 保持不变)
+
     private int getNewId(AtomicInteger counter, CSVPrinter printer, String name) {
         int newId = counter.getAndIncrement();
         try {
@@ -272,35 +241,25 @@ public class CSVDecomposerV2 { // [!! 重命名 !!]
         return newId;
     }
 
-    /**
-     * 3. 处理评论文件 (V10 更新)
-     * - (V10) 如果 ReviewID (PK), RecipeID (FK), 或 UserID (FK) 为 null，则跳过该行。
-     */
+
     private void processReviewFile() throws IOException {
         Path inputFile = Paths.get(INPUT_DIR, INPUT_REVIEW_FILE);
         try (
                 BufferedReader reader = Files.newBufferedReader(inputFile);
                 CSVParser csvParser = CSV_FORMAT.parse(reader);
-                // V8 表头修复 (保持不变)
                 CSVPrinter reviewPrinter = createPrinter("Review.csv", "ReviewID", "RecipeID", "UserID", "Rating", "ReviewText", "DateSubmitted", "DateModified", "Likes");
                 CSVPrinter likeReviewPrinter = createPrinter("User_Like_Review.csv", "UserID", "ReviewID")
         ) {
             for (CSVRecord record : csvParser) {
-                // V9 修复 (保持不变)
                 String reviewId = getIntegerString(record, "ReviewId");
                 String recipeId = getIntegerString(record, "RecipeId");
                 String userId = getIntegerString(record, "AuthorId");
-
-                // [!! V10 修复 !!]
-                // 这就是修复您报告的错误的地方。
-                // 如果评论的主键或任何关键外键为 null，则此行无效。
                 if (reviewId == null || recipeId == null || userId == null) {
                     System.err.println("  > [V10] 跳过无效的 Review 记录 (PK/FK 为 null)，在原始文件第 " + record.getRecordNumber() + " 行附近。 ReviewID=" + reviewId + ", RecipeID=" + recipeId + ", UserID=" + userId);
-                    continue; // 跳到下一个 CSVRecord
+                    continue;
                 }
 
 
-                // Likes 处理 (现在是安全的)
                 String likesListStr = record.get("Likes");
                 List<String> userLists = parseCsvListString(likesListStr);
                 List<String> individualLikerIds = new ArrayList<>();
@@ -317,14 +276,12 @@ public class CSVDecomposerV2 { // [!! 重命名 !!]
                 int likesCount = individualLikerIds.size();
 
                 for (String likerId : individualLikerIds) {
-                    // V9 修复 (保持不变)
                     String cleanedLikerId = cleanIntegerString(likerId);
-                    if (cleanedLikerId != null) { // [!! V10 修复 !!] 确保我们不会写入 null 的 FK
+                    if (cleanedLikerId != null) {
                         likeReviewPrinter.printRecord(cleanedLikerId, reviewId);
                     }
                 }
 
-                // 写入 Review.csv (现在是安全的)
                 reviewPrinter.printRecord(
                         reviewId,
                         recipeId,
@@ -341,10 +298,6 @@ public class CSVDecomposerV2 { // [!! 重命名 !!]
         }
     }
 
-    // --- 辅助方法 (保持 V9 不变) ---
-
-    // (cleanRVectorString, parseCsvListString, createPrinter, parseDurationToMinutes, getNumericString (2x), getIntegerString, cleanIntegerString)
-    // ... 所有这些方法都保持不变 ...
 
     private String cleanRVectorString(String rVector) {
         if (rVector == null || rVector.isEmpty()) { return null; }
@@ -447,4 +400,5 @@ public class CSVDecomposerV2 { // [!! 重命名 !!]
             return null;
         }
     }
+
 }
